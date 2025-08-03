@@ -322,8 +322,8 @@ pub fn parse_time_tracking_data(input: &str) -> TimeTrackingData {
     for entry in &entries {
         if let Some(prev_end) = last_end {
             let gap = prev_end.chronological_duration_minutes(&entry.start);
-            if gap > 0 && gap <= 6 * 60 {
-                // Only count reasonable gaps as dead time
+            if gap > 0 {
+                // Count ALL gaps as dead time, regardless of size
                 data.dead_time_minutes += gap as u32;
             }
         }

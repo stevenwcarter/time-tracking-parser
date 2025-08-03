@@ -240,3 +240,37 @@ fn test_generate_sample_output() {
     assert!(output.contains("Billing Code: someproject - 0:30 (0.50 hrs)"));
     assert!(output.contains("- discussing staffing with colleague"));
 }
+
+#[test]
+fn test_parse_large_gap_dead_time() {
+    let input = r#"11:45-12:15 code1
+- Comment explaining what you did
+12:15-1:30 code2
+- Comment about what you were doing
+1:30-2 code1
+2-4 code3
+3:45-4 code4"#;
+
+    let data = parse_time_tracking_data(input);
+    
+    println!("Debug: Total minutes: {}", data.total_minutes);
+    println!("Debug: Dead time minutes: {}", data.dead_time_minutes);
+    println!("Debug: Warnings: {:?}", data.warnings);
+
+    // Total working time should be: 30 + 75 + 30 + 120 + 15 = 270 minutes (4.5 hours)
+    assert_eq!(data.total_minutes, 270);
+    
+    // There should be a large gap from 4:00 to 3:45 (11 hours 45 minutes = 705 minutes)
+    // This should both generate a warning AND be counted as dead time
+    assert!(!data.warnings.is_empty());
+    assert!(data.warnings.iter().any(|w| w.contains("Gap from 4:00 to 3:45")));
+    
+    // The dead time should include the large gap: 705 minutes (11:45)
+    assert_eq!(data.dead_time_minutes, 705);
+    
+    // Check projects
+    assert_eq!(data.projects.len(), 4);
+    
+    let code1 = data.projects.iter().find(|p| p.name == "code1").unwrap();
+    assert_eq!(code1.total_minutes, 60); // 30 + 30 = 60 minutes
+}

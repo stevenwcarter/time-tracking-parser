@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Represents a time in 12-hour format (no AM/PM needed as per requirements)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -30,7 +30,7 @@ impl Time {
     pub fn duration_minutes(&self, end: &Time) -> i32 {
         let start_mins = self.to_minutes() as i32;
         let end_mins = end.to_minutes() as i32;
-        
+
         if end_mins >= start_mins {
             end_mins - start_mins
         } else {
@@ -44,7 +44,7 @@ impl Time {
     pub fn chronological_duration_minutes(&self, end: &Time) -> i32 {
         let start_mins = self.to_minutes() as i32;
         let end_mins = end.to_minutes() as i32;
-        
+
         if end_mins > start_mins {
             end_mins - start_mins
         } else if end_mins == start_mins {
@@ -90,7 +90,7 @@ impl TimeEntry {
 }
 
 /// Represents aggregated project data
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ProjectSummary {
     pub name: String,
     pub total_minutes: u32,
@@ -116,7 +116,7 @@ impl ProjectSummary {
 }
 
 /// Main struct holding all parsed time tracking data
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct TimeTrackingData {
     pub total_minutes: u32,
     pub dead_time_minutes: u32,
@@ -150,21 +150,24 @@ impl TimeTrackingData {
 /// Parse a time string like "7:30" or "7"
 fn parse_time(time_str: &str) -> Result<Time, String> {
     let parts: Vec<&str> = time_str.split(':').collect();
-    
+
     match parts.len() {
         1 => {
-            let hour: u8 = parts[0].parse()
+            let hour: u8 = parts[0]
+                .parse()
                 .map_err(|_| format!("Invalid hour: {}", parts[0]))?;
             Time::new(hour, 0)
-        },
+        }
         2 => {
-            let hour: u8 = parts[0].parse()
+            let hour: u8 = parts[0]
+                .parse()
                 .map_err(|_| format!("Invalid hour: {}", parts[0]))?;
-            let minute: u8 = parts[1].parse()
+            let minute: u8 = parts[1]
+                .parse()
                 .map_err(|_| format!("Invalid minute: {}", parts[1]))?;
             Time::new(hour, minute)
-        },
-        _ => Err(format!("Invalid time format: {time_str}"))
+        }
+        _ => Err(format!("Invalid time format: {time_str}")),
     }
 }
 
@@ -177,7 +180,7 @@ fn parse_time_range(range_str: &str) -> Result<(Time, Time), String> {
 
     let start = parse_time(parts[0].trim())?;
     let end = parse_time(parts[1].trim())?;
-    
+
     Ok((start, end))
 }
 
@@ -186,7 +189,7 @@ pub fn parse_time_tracking_data(input: &str) -> TimeTrackingData {
     let mut data = TimeTrackingData::new();
     let mut entries = Vec::new();
     let mut current_entry: Option<TimeEntry> = None;
-    
+
     for line in input.lines() {
         let line = line.trim();
         if line.is_empty() {
@@ -209,7 +212,8 @@ pub fn parse_time_tracking_data(input: &str) -> TimeTrackingData {
             // Parse new time entry
             let parts: Vec<&str> = line.splitn(2, ' ').collect();
             if parts.len() < 2 {
-                data.warnings.push(format!("Line missing project name: {line}"));
+                data.warnings
+                    .push(format!("Line missing project name: {line}"));
                 // Don't continue here - we want to parse the time range for dead time calculation
                 // but we won't create a valid entry
                 if let Ok((start, end)) = parse_time_range(parts[0]) {
@@ -234,9 +238,10 @@ pub fn parse_time_tracking_data(input: &str) -> TimeTrackingData {
                         project,
                         notes: Vec::new(),
                     });
-                },
+                }
                 Err(e) => {
-                    data.warnings.push(format!("Error parsing time range '{}': {}", parts[0], e));
+                    data.warnings
+                        .push(format!("Error parsing time range '{}': {}", parts[0], e));
                 }
             }
         }
@@ -286,33 +291,35 @@ pub fn parse_time_tracking_data(input: &str) -> TimeTrackingData {
     for entry in &entries {
         total_minutes += entry.duration_minutes();
     }
-    
+
     // Calculate dead time using all entries (reuse the gap calculation)
     let mut last_end: Option<&Time> = None;
     for entry in &entries {
         if let Some(prev_end) = last_end {
             let gap = prev_end.chronological_duration_minutes(&entry.start);
-            if gap > 0 && gap <= 6 * 60 { // Only count reasonable gaps as dead time
+            if gap > 0 && gap <= 6 * 60 {
+                // Only count reasonable gaps as dead time
                 data.dead_time_minutes += gap as u32;
             }
         }
         last_end = Some(&entry.end);
     }
-    
+
     data.total_minutes = total_minutes;
 
     // Aggregate by project using only entries with valid project names
     let mut project_map: HashMap<String, ProjectSummary> = HashMap::new();
-    
+
     for entry in &entries {
         // Skip entries without project names for project aggregation
         if entry.project.is_empty() {
             continue;
         }
-        
-        let project_summary = project_map.entry(entry.project.clone())
+
+        let project_summary = project_map
+            .entry(entry.project.clone())
             .or_insert_with(|| ProjectSummary::new(entry.project.clone()));
-        
+
         project_summary.add_time(entry.duration_minutes());
         project_summary.add_notes(entry.notes.clone());
     }
@@ -335,34 +342,43 @@ fn format_time(time: &Time) -> String {
 /// Generate sample output for testing/comparison (as requested)
 pub fn generate_sample_output(data: &TimeTrackingData) -> String {
     let mut output = String::new();
-    
+
     if let (Some(start), Some(end)) = (&data.start_time, &data.end_time) {
-        output.push_str(&format!("Start Time: {} End Time: {}\n", 
-            format_time(start), format_time(end)));
+        output.push_str(&format!(
+            "Start Time: {} End Time: {}\n",
+            format_time(start),
+            format_time(end)
+        ));
     }
-    
-    output.push_str(&format!("Total Working Time: {} ({} hrs)\n",
+
+    output.push_str(&format!(
+        "Total Working Time: {} ({} hrs)\n",
         Time::format_duration_minutes(data.total_minutes),
-        Time::format_duration_decimal(data.total_minutes)));
-    
-    output.push_str(&format!("Total dead time: {} ({} hrs)\n",
+        Time::format_duration_decimal(data.total_minutes)
+    ));
+
+    output.push_str(&format!(
+        "Total dead time: {} ({} hrs)\n",
         Time::format_duration_minutes(data.dead_time_minutes),
-        Time::format_duration_decimal(data.dead_time_minutes)));
-    
+        Time::format_duration_decimal(data.dead_time_minutes)
+    ));
+
     output.push('\n');
-    
+
     for project in &data.projects {
-        output.push_str(&format!("Billing Code: {} - {} ({} hrs)\n",
+        output.push_str(&format!(
+            "Billing Code: {} - {} ({} hrs)\n",
             project.name,
             Time::format_duration_minutes(project.total_minutes),
-            Time::format_duration_decimal(project.total_minutes)));
-        
+            Time::format_duration_decimal(project.total_minutes)
+        ));
+
         for note in &project.notes {
             output.push_str(&format!("- {note}\n"));
         }
         output.push('\n');
     }
-    
+
     output
 }
 
@@ -373,10 +389,12 @@ pub fn parse_time_data(input: &str) -> String {
 
 pub fn parse_time_data_to_json(input: &str) -> String {
     let data = parse_time_tracking_data(input);
-    data.to_json().unwrap_or_else(|e| format!("Error serializing to JSON: {e}"))
+    data.to_json()
+        .unwrap_or_else(|e| format!("Error serializing to JSON: {e}"))
 }
 
 pub fn parse_time_data_to_json_pretty(input: &str) -> String {
     let data = parse_time_tracking_data(input);
-    data.to_json_pretty().unwrap_or_else(|e| format!("Error serializing to JSON: {e}"))
+    data.to_json_pretty()
+        .unwrap_or_else(|e| format!("Error serializing to JSON: {e}"))
 }

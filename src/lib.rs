@@ -331,7 +331,7 @@ pub fn parse_time_tracking_data(input: &str) -> TimeTrackingData {
 }
 
 /// Helper function to format a Time struct as a string
-fn format_time(time: &Time) -> String {
+pub fn format_time(time: &Time) -> String {
     if time.minute == 0 {
         format!("{}:00", time.hour)
     } else {

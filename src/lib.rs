@@ -209,16 +209,50 @@ fn parse_time_range(range_str: &str) -> Result<(Time, Time), String> {
     Ok((start, end))
 }
 
+/// Check if a line looks like a time tracking entry (e.g., "10-2 project" or "10:30-3 project")
+/// This includes lines that have the time pattern but might be missing the project name
+fn is_time_tracking_line(line: &str) -> bool {
+    // Use regex to match time patterns like "10-2" or "10:30-3:45", with or without project name
+    use std::sync::OnceLock;
+    static TIME_REGEX: OnceLock<regex::Regex> = OnceLock::new();
+    
+    let regex = TIME_REGEX.get_or_init(|| {
+        regex::Regex::new(r"^\d{1,2}(?::\d{2})?-\d{1,2}(?::\d{2})?").unwrap()
+    });
+    
+    regex.is_match(line)
+}
+
+/// Check if we should continue parsing (line starts with number, dash, or space)
+fn should_continue_parsing(line: &str) -> bool {
+    line.starts_with(char::is_numeric) || line.starts_with('-') || line.starts_with(' ')
+}
+
 /// Main parsing function
 pub fn parse_time_tracking_data(input: &str) -> TimeTrackingData {
     let mut data = TimeTrackingData::new();
     let mut entries = Vec::new();
     let mut current_entry: Option<TimeEntry> = None;
+    let mut parsing_started = false;
 
     for line in input.lines() {
         let line = line.trim();
         if line.is_empty() {
             continue;
+        }
+
+        // If we haven't started parsing yet, look for the first time tracking line
+        if !parsing_started {
+            if is_time_tracking_line(line) {
+                parsing_started = true;
+            } else {
+                continue; // Skip lines until we find a time tracking pattern
+            }
+        }
+
+        // If we've started parsing, check if we should continue
+        if parsing_started && !should_continue_parsing(line) {
+            break; // Stop parsing when we hit a line that doesn't start with number, dash, or space
         }
 
         if line.starts_with('-') {

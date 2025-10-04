@@ -274,3 +274,56 @@ fn test_parse_large_gap_dead_time() {
     let code1 = data.projects.iter().find(|p| p.name == "code1").unwrap();
     assert_eq!(code1.total_minutes, 60); // 30 + 30 = 60 minutes
 }
+
+#[test]
+fn test_parse_with_header_and_footer_content() {
+    let input = r#"This is some header content
+That should be ignored
+Until we find time tracking data
+
+11:45-12:15 code1
+- Comment explaining what you did
+12:15-1:30 code2
+- Comment about what you were doing
+1:30-2 code1
+2-4 code3
+
+This content after should be ignored
+Because it doesn't start with a number, dash, or space
+More content here
+"#;
+
+    let data = parse_time_tracking_data(input);
+    
+    // Should only parse the time tracking portion
+    assert_eq!(data.total_minutes, 255); // 30 + 75 + 30 + 120 = 255 minutes
+    assert_eq!(data.projects.len(), 3);
+    
+    let code1 = data.projects.iter().find(|p| p.name == "code1").unwrap();
+    assert_eq!(code1.total_minutes, 60); // 30 + 30 = 60 minutes
+    
+    let code2 = data.projects.iter().find(|p| p.name == "code2").unwrap();
+    assert_eq!(code2.total_minutes, 75); // 75 minutes
+    
+    let code3 = data.projects.iter().find(|p| p.name == "code3").unwrap();
+    assert_eq!(code3.total_minutes, 120); // 120 minutes
+}
+
+#[test]
+fn test_parse_stops_at_non_matching_line() {
+    let input = r#"10-11 project1
+- Note for project1
+11-12 project2
+Some random text that doesn't match pattern
+1-2 project3
+- This should not be parsed"#;
+
+    let data = parse_time_tracking_data(input);
+    
+    // Should only parse the first two entries before hitting the non-matching line
+    assert_eq!(data.total_minutes, 120); // 60 + 60 = 120 minutes
+    assert_eq!(data.projects.len(), 2);
+    
+    // project3 should not be included
+    assert!(!data.projects.iter().any(|p| p.name == "project3"));
+}

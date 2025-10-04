@@ -7,9 +7,9 @@ fn test_parse_basic_time_tracking() {
 - discussing staffing with colleague
 8:30-11 someproject
 - investigated issue, pushed PR
-- pushed potential fix for component /build url handling
+* pushed potential fix for component /build url handling
 11-12 other-project
-- tech connect
+tech connect
 12-12:30 admin
 - 1:1 w/ coworker
 12:30-2:30 someproject
@@ -43,30 +43,22 @@ fn test_parse_basic_time_tracking() {
         .unwrap();
     assert_eq!(someproject.total_minutes, 300); // 5 hours
     assert_eq!(someproject.notes.len(), 3);
-    assert!(
-        someproject
-            .notes
-            .contains(&"investigated issue, pushed PR".to_string())
-    );
-    assert!(
-        someproject
-            .notes
-            .contains(&"pushed potential fix for component /build url handling".to_string())
-    );
-    assert!(
-        someproject
-            .notes
-            .contains(&"discussing work items and how to complete".to_string())
-    );
+    assert!(someproject
+        .notes
+        .contains(&"investigated issue, pushed PR".to_string()));
+    assert!(someproject
+        .notes
+        .contains(&"pushed potential fix for component /build url handling".to_string()));
+    assert!(someproject
+        .notes
+        .contains(&"discussing work items and how to complete".to_string()));
 
     let admin = data.projects.iter().find(|p| p.name == "admin").unwrap();
     assert_eq!(admin.total_minutes, 60); // 1 hour
     assert_eq!(admin.notes.len(), 2);
-    assert!(
-        admin
-            .notes
-            .contains(&"discussing staffing with colleague".to_string())
-    );
+    assert!(admin
+        .notes
+        .contains(&"discussing staffing with colleague".to_string()));
     assert!(admin.notes.contains(&"1:1 w/ coworker".to_string()));
 
     let thomson = data
@@ -129,11 +121,10 @@ fn test_parse_long_duration_warning() {
 
     // This should trigger a warning because going from 3 to 1 suggests a 22-hour gap
     assert!(!data.warnings.is_empty());
-    assert!(
-        data.warnings
-            .iter()
-            .any(|w| w.contains("longer than 6 hours"))
-    );
+    assert!(data
+        .warnings
+        .iter()
+        .any(|w| w.contains("longer than 6 hours")));
 }
 
 #[test]
@@ -252,25 +243,28 @@ fn test_parse_large_gap_dead_time() {
 3:45-4 code4"#;
 
     let data = parse_time_tracking_data(input);
-    
+
     println!("Debug: Total minutes: {}", data.total_minutes);
     println!("Debug: Dead time minutes: {}", data.dead_time_minutes);
     println!("Debug: Warnings: {:?}", data.warnings);
 
     // Total working time should be: 30 + 75 + 30 + 120 + 15 = 270 minutes (4.5 hours)
     assert_eq!(data.total_minutes, 270);
-    
+
     // There should be a large gap from 4:00 to 3:45 (11 hours 45 minutes = 705 minutes)
     // This should both generate a warning AND be counted as dead time
     assert!(!data.warnings.is_empty());
-    assert!(data.warnings.iter().any(|w| w.contains("Gap from 4:00 to 3:45")));
-    
+    assert!(data
+        .warnings
+        .iter()
+        .any(|w| w.contains("Gap from 4:00 to 3:45")));
+
     // The dead time should include the large gap: 705 minutes (11:45)
     assert_eq!(data.dead_time_minutes, 705);
-    
+
     // Check projects
     assert_eq!(data.projects.len(), 4);
-    
+
     let code1 = data.projects.iter().find(|p| p.name == "code1").unwrap();
     assert_eq!(code1.total_minutes, 60); // 30 + 30 = 60 minutes
 }
@@ -294,17 +288,17 @@ More content here
 "#;
 
     let data = parse_time_tracking_data(input);
-    
+
     // Should only parse the time tracking portion
     assert_eq!(data.total_minutes, 255); // 30 + 75 + 30 + 120 = 255 minutes
     assert_eq!(data.projects.len(), 3);
-    
+
     let code1 = data.projects.iter().find(|p| p.name == "code1").unwrap();
     assert_eq!(code1.total_minutes, 60); // 30 + 30 = 60 minutes
-    
+
     let code2 = data.projects.iter().find(|p| p.name == "code2").unwrap();
     assert_eq!(code2.total_minutes, 75); // 75 minutes
-    
+
     let code3 = data.projects.iter().find(|p| p.name == "code3").unwrap();
     assert_eq!(code3.total_minutes, 120); // 120 minutes
 }
@@ -314,16 +308,16 @@ fn test_parse_stops_at_non_matching_line() {
     let input = r#"10-11 project1
 - Note for project1
 11-12 project2
-Some random text that doesn't match pattern
+;Some random text that doesn't match pattern
 1-2 project3
 - This should not be parsed"#;
 
     let data = parse_time_tracking_data(input);
-    
+
     // Should only parse the first two entries before hitting the non-matching line
     assert_eq!(data.total_minutes, 120); // 60 + 60 = 120 minutes
     assert_eq!(data.projects.len(), 2);
-    
+
     // project3 should not be included
     assert!(!data.projects.iter().any(|p| p.name == "project3"));
 }

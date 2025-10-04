@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use strip_prefix_suffix_sane::StripPrefixSuffixSane;
 
 /// Represents a time in 12-hour format (no AM/PM needed as per requirements)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -215,17 +216,21 @@ fn is_time_tracking_line(line: &str) -> bool {
     // Use regex to match time patterns like "10-2" or "10:30-3:45", with or without project name
     use std::sync::OnceLock;
     static TIME_REGEX: OnceLock<regex::Regex> = OnceLock::new();
-    
-    let regex = TIME_REGEX.get_or_init(|| {
-        regex::Regex::new(r"^\d{1,2}(?::\d{2})?-\d{1,2}(?::\d{2})?").unwrap()
-    });
-    
+
+    let regex = TIME_REGEX
+        .get_or_init(|| regex::Regex::new(r"^\d{1,2}(?::\d{2})?-\d{1,2}(?::\d{2})?").unwrap());
+
     regex.is_match(line)
 }
 
 /// Check if we should continue parsing (line starts with number, dash, or space)
 fn should_continue_parsing(line: &str) -> bool {
-    line.starts_with(char::is_numeric) || line.starts_with('-') || line.starts_with(' ')
+    line.starts_with(char::is_numeric)
+        || line.starts_with('-')
+        || line.starts_with(' ')
+        || line.starts_with('*')
+        || line.starts_with(char::is_lowercase)
+        || line.starts_with(char::is_uppercase)
 }
 
 /// Main parsing function
@@ -237,8 +242,8 @@ pub fn parse_time_tracking_data(input: &str) -> TimeTrackingData {
 
     for line in input.lines() {
         let line = line.trim();
-        if line.is_empty() {
-            continue;
+        if line.is_empty() && !parsing_started {
+            continue; // Stop parsing on empty line after starting
         }
 
         // If we haven't started parsing yet, look for the first time tracking line
@@ -255,12 +260,14 @@ pub fn parse_time_tracking_data(input: &str) -> TimeTrackingData {
             break; // Stop parsing when we hit a line that doesn't start with number, dash, or space
         }
 
-        if line.starts_with('-') {
-            // This is a note line
+        if !line.starts_with(char::is_numeric) && !line.is_empty() {
             if let Some(ref mut entry) = current_entry {
-                if let Some(note) = line.strip_prefix('-') {
-                    entry.notes.push(note.trim().to_string());
-                }
+                entry.notes.push(
+                    line.strip_prefix_sane("-")
+                        .strip_prefix_sane("*")
+                        .trim()
+                        .to_string(),
+                );
             }
         } else {
             // Save previous entry if exists

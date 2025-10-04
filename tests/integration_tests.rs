@@ -18,6 +18,8 @@ fn test_integration_sample_data() {
     let data = parse_time_tracking_data(input);
     let output = generate_sample_output(&data);
 
+    println!("{output}\n\n");
+
     // Verify the output matches expected format
     let expected_lines = [
         "Start Time: 7:30 End Time: 2:30",
@@ -91,11 +93,10 @@ fn test_complex_scenario_with_gaps_and_warnings() {
 
     // Check warnings
     assert!(!data.warnings.is_empty());
-    assert!(
-        data.warnings
-            .iter()
-            .any(|w| w.contains("missing project name"))
-    );
+    assert!(data
+        .warnings
+        .iter()
+        .any(|w| w.contains("missing project name")));
 
     // Check dead time calculation:
     // 8-10 (2 hrs), 1-3 (2 hrs), 4-5 (1 hr) = 5 hours = 300 minutes

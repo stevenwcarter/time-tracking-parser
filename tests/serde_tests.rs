@@ -6,7 +6,7 @@ fn test_serde_serialization() {
 8-8:30 general
 - discussing staffing with colleague"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     // Test JSON serialization
     let json = data.to_json().expect("Should serialize to JSON");
@@ -42,7 +42,7 @@ fn test_serde_round_trip() {
 11-12 other-project
 - tech connect"#;
 
-    let original_data = parse_time_tracking_data(input);
+    let original_data = parse_time_tracking_data(input, None, None);
 
     // Serialize to JSON
     let json = original_data.to_json().expect("Should serialize");
@@ -80,12 +80,12 @@ fn test_wasm_json_functions() {
 8-8:30 general"#;
 
     // Test WASM JSON function
-    let json_output = parse_time_data_to_json(input);
+    let json_output = parse_time_data_to_json(input, None, None);
     assert!(json_output.contains(&format!("\"total_minutes\":{}", 60)));
     assert!(!json_output.starts_with("Error"));
 
     // Test WASM pretty JSON function
-    let pretty_json_output = parse_time_data_to_json_pretty(input);
+    let pretty_json_output = parse_time_data_to_json_pretty(input, None, None);
     assert!(pretty_json_output.contains(&format!("\"total_minutes\": {}", 60)));
     assert!(pretty_json_output.contains("\n"));
     assert!(!pretty_json_output.starts_with("Error"));
@@ -102,7 +102,7 @@ fn test_json_with_warnings() {
     let input = r#"7-8 project1
 3-4 project2"#; // This should generate a warning
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
     assert!(!data.warnings.is_empty());
 
     let json = data.to_json().expect("Should serialize even with warnings");

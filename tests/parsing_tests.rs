@@ -15,7 +15,7 @@ tech connect
 12:30-2:30 someproject
 - discussing work items and how to complete"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     // Check basic totals
     assert_eq!(data.total_minutes, 420); // 7 hours
@@ -76,7 +76,7 @@ fn test_parse_with_gaps() {
     let input = r#"7-8 project1
 9-10 project2"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     assert_eq!(data.total_minutes, 120); // 2 hours
     assert_eq!(data.dead_time_minutes, 60); // 1 hour gap
@@ -88,7 +88,7 @@ fn test_parse_missing_project_name() {
     let input = r#"7-8
 9-10 project2"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     assert_eq!(data.warnings.len(), 1);
     assert!(data.warnings[0].contains("Line missing project name"));
@@ -100,7 +100,7 @@ fn test_parse_long_duration_warning() {
     let input = r#"2-3 project1
 1-2 project2"#; // Gap from 3 to 1 should be 10 hours, but this suggests wrong order
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     // Debug: let's see what warnings we actually get
     println!("Warnings: {:?}", data.warnings);
@@ -132,7 +132,7 @@ fn test_parse_hour_only_format() {
     let input = r#"7-8 project1
 8-9 project2"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     assert_eq!(data.total_minutes, 120); // 2 hours
     assert_eq!(data.projects.len(), 2);
@@ -144,7 +144,7 @@ fn test_parse_mixed_time_formats() {
     let input = r#"7:30-8 project1
 8-8:15 project2"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     assert_eq!(data.total_minutes, 45); // 30 + 15 minutes
     assert_eq!(data.projects.len(), 2);
@@ -157,7 +157,7 @@ fn test_parse_notes_without_time_entry() {
 7-8 project1
 - real note"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     // Orphaned notes should be ignored
     assert_eq!(data.projects.len(), 1);
@@ -168,7 +168,7 @@ fn test_parse_notes_without_time_entry() {
 
 #[test]
 fn test_parse_empty_input() {
-    let data = parse_time_tracking_data("");
+    let data = parse_time_tracking_data("", None, None);
 
     assert_eq!(data.total_minutes, 0);
     assert_eq!(data.dead_time_minutes, 0);
@@ -184,7 +184,7 @@ fn test_parse_invalid_time_format() {
 7-26 project2
 7:70-8 project3"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     assert!(data.warnings.len() >= 2); // Should have warnings for invalid times
     assert_eq!(data.projects.len(), 0); // No valid entries
@@ -199,7 +199,7 @@ fn test_project_summary_aggregation() {
 11-12 project2
 - note 3"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     assert_eq!(data.projects.len(), 2);
 
@@ -221,7 +221,7 @@ fn test_generate_sample_output() {
 8-8:30 admin
 - discussing staffing with colleague"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
     let output = generate_sample_output(&data);
 
     assert!(output.contains("Start Time: 7:30 End Time: 8:30"));
@@ -242,7 +242,7 @@ fn test_parse_large_gap_dead_time() {
 2-4 code3
 3:45-4 code4"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     println!("Debug: Total minutes: {}", data.total_minutes);
     println!("Debug: Dead time minutes: {}", data.dead_time_minutes);
@@ -287,7 +287,46 @@ Because it doesn't start with a number, dash, or space
 More content here
 "#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
+
+    // Should only parse the time tracking portion
+    assert_eq!(data.total_minutes, 255); // 30 + 75 + 30 + 120 = 255 minutes
+    assert_eq!(data.projects.len(), 3);
+
+    let code1 = data.projects.iter().find(|p| p.name == "code1").unwrap();
+    assert_eq!(code1.total_minutes, 60); // 30 + 30 = 60 minutes
+
+    let code2 = data.projects.iter().find(|p| p.name == "code2").unwrap();
+    assert_eq!(code2.total_minutes, 75); // 75 minutes
+
+    let code3 = data.projects.iter().find(|p| p.name == "code3").unwrap();
+    assert_eq!(code3.total_minutes, 120); // 120 minutes
+}
+
+#[test]
+fn test_parse_with_header_and_footer_content_with_defined_prefix_and_suffix() {
+    let input = r#"This is some header content
+That should be ignored
+Until we find time tracking data
+
+```timetracking
+11:45-12:15 code1
+- Comment explaining what you did
+
+
+
+12:15-1:30 code2
+- Comment about what you were doing
+1:30-2 code1
+2-4 code3
+```
+
+This content after should be ignored
+Because it doesn't start with a number, dash, or space
+More content here
+"#;
+
+    let data = parse_time_tracking_data(input, Some("```timetracking"), Some("```"));
 
     // Should only parse the time tracking portion
     assert_eq!(data.total_minutes, 255); // 30 + 75 + 30 + 120 = 255 minutes
@@ -312,7 +351,7 @@ fn test_parse_stops_at_non_matching_line() {
 1-2 project3
 - This should not be parsed"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     // Should only parse the first two entries before hitting the non-matching line
     assert_eq!(data.total_minutes, 120); // 60 + 60 = 120 minutes

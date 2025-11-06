@@ -11,7 +11,7 @@ fn main() {
 "#;
 
     println!("Parsing time tracking data...\n");
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     if !data.warnings.is_empty() {
         println!("Warnings:");

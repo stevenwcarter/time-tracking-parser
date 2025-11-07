@@ -117,7 +117,7 @@ impl ProjectSummary {
 }
 
 /// Main struct holding all parsed time tracking data
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct TimeTrackingData {
     pub total_minutes: u32,
     pub dead_time_minutes: u32,

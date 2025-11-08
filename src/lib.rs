@@ -421,6 +421,22 @@ pub fn parse_time_tracking_data(
     data
 }
 
+pub fn format_time_option(time: Option<&Time>, fallback: &str) -> String {
+    if time.is_none() {
+        return fallback.to_owned();
+    }
+    let time = time.unwrap();
+    if time.minute == 0 {
+        if time.hour == 0 {
+            "00:00".to_owned()
+        } else {
+            format!("{:02}:00", time.hour)
+        }
+    } else {
+        format!("{:02}:{:02}", time.hour, time.minute)
+    }
+}
+
 /// Helper function to format a Time struct as a string
 pub fn format_time(time: &Time) -> String {
     if time.minute == 0 {

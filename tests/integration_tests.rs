@@ -15,7 +15,7 @@ fn test_integration_sample_data() {
 12:30-2:30 someproject
 - discussing work items and how to complete"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
     let output = generate_sample_output(&data);
 
     println!("{output}\n\n");
@@ -53,7 +53,7 @@ fn test_integration_sample_data() {
 fn test_wasm_compatibility() {
     // Test that the main parsing function works (this ensures WASM compatibility)
     let input = "7-8 test\n- note";
-    let result = parse_time_data(input);
+    let result = parse_time_data(input, None, None);
 
     assert!(result.contains("Start Time: 7:00 End Time: 8:00"));
     assert!(result.contains("Billing Code: test - 1:00 (1.00 hrs)"));
@@ -65,7 +65,7 @@ fn test_edge_case_midnight_crossing() {
     let input = r#"11:30-12:30 project1
 12:30-1:30 project2"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     // Should handle crossing noon/midnight correctly
     assert_eq!(data.total_minutes, 120); // 2 hours total
@@ -89,7 +89,7 @@ fn test_complex_scenario_with_gaps_and_warnings() {
 - missing project name
 5-6 project3"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     // Check warnings
     assert!(!data.warnings.is_empty());
@@ -122,7 +122,7 @@ fn test_twelve_hour_time_boundaries() {
 1-2 project2
 11-12 project3"#;
 
-    let data = parse_time_tracking_data(input);
+    let data = parse_time_tracking_data(input, None, None);
 
     assert_eq!(data.total_minutes, 180); // 3 hours
     assert_eq!(data.projects.len(), 3);
@@ -144,7 +144,7 @@ fn test_performance_with_large_input() {
         input.push_str(&format!("- note for project {}\n", i % 5));
     }
 
-    let data = parse_time_tracking_data(&input);
+    let data = parse_time_tracking_data(&input, None, None);
 
     // Should handle large inputs without issues
     assert_eq!(data.projects.len(), 5); // 5 unique projects (0-4)

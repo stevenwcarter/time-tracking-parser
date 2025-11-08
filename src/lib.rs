@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 use strip_prefix_suffix_sane::StripPrefixSuffixSane;
 
 /// Represents a time in 12-hour format (no AM/PM needed as per requirements)
@@ -72,6 +72,17 @@ impl Time {
     pub fn format_duration_decimal(minutes: u32) -> String {
         let hours = minutes as f32 / 60.0;
         format!("{hours:.2}")
+    }
+}
+
+impl Display for Time {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let minutes = self.to_minutes() as u32;
+        if minutes == 60 {
+            write!(f, "1 hour")
+        } else {
+            write!(f, "{} hours", Self::format_duration_decimal(minutes))
+        }
     }
 }
 

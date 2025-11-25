@@ -26,10 +26,10 @@ fn test_time_creation_minute_boundary() {
 fn test_time_to_minutes() {
     let time1 = Time::new(1, 0).unwrap();
     assert_eq!(time1.to_minutes(), 60);
-    
+
     let time2 = Time::new(12, 0).unwrap();
     assert_eq!(time2.to_minutes(), 0); // 12 AM = 0 minutes
-    
+
     let time3 = Time::new(7, 30).unwrap();
     assert_eq!(time3.to_minutes(), 450); // 7:30 AM = 7.5 * 60 = 450
 }
@@ -71,4 +71,13 @@ fn test_format_duration_decimal() {
     assert_eq!(Time::format_duration_decimal(90), "1.50");
     assert_eq!(Time::format_duration_decimal(420), "7.00");
     assert_eq!(Time::format_duration_decimal(450), "7.50");
+}
+
+#[test]
+fn test_hour() {
+    assert_eq!("1".parse::<Hour>().unwrap(), 1);
+    assert_eq!("0".parse::<Hour>().unwrap(), 0);
+    assert_eq!("12".parse::<Hour>().unwrap(), 12);
+    assert!("13".parse::<Hour>().is_err());
+    assert!("-3".parse::<Hour>().is_err());
 }

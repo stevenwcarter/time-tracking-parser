@@ -43,22 +43,30 @@ tech connect
         .unwrap();
     assert_eq!(someproject.total_minutes, 300); // 5 hours
     assert_eq!(someproject.notes.len(), 3);
-    assert!(someproject
-        .notes
-        .contains(&"investigated issue, pushed PR".to_string()));
-    assert!(someproject
-        .notes
-        .contains(&"pushed potential fix for component /build url handling".to_string()));
-    assert!(someproject
-        .notes
-        .contains(&"discussing work items and how to complete".to_string()));
+    assert!(
+        someproject
+            .notes
+            .contains(&"investigated issue, pushed PR".to_string())
+    );
+    assert!(
+        someproject
+            .notes
+            .contains(&"pushed potential fix for component /build url handling".to_string())
+    );
+    assert!(
+        someproject
+            .notes
+            .contains(&"discussing work items and how to complete".to_string())
+    );
 
     let admin = data.projects.iter().find(|p| p.name == "admin").unwrap();
     assert_eq!(admin.total_minutes, 60); // 1 hour
     assert_eq!(admin.notes.len(), 2);
-    assert!(admin
-        .notes
-        .contains(&"discussing staffing with colleague".to_string()));
+    assert!(
+        admin
+            .notes
+            .contains(&"discussing staffing with colleague".to_string())
+    );
     assert!(admin.notes.contains(&"1:1 w/ coworker".to_string()));
 
     let thomson = data
@@ -121,10 +129,11 @@ fn test_parse_long_duration_warning() {
 
     // This should trigger a warning because going from 3 to 1 suggests a 22-hour gap
     assert!(!data.warnings.is_empty());
-    assert!(data
-        .warnings
-        .iter()
-        .any(|w| w.contains("longer than 6 hours")));
+    assert!(
+        data.warnings
+            .iter()
+            .any(|w| w.contains("longer than 6 hours"))
+    );
 }
 
 #[test]
@@ -254,10 +263,11 @@ fn test_parse_large_gap_dead_time() {
     // There should be a large gap from 4:00 to 3:45 (11 hours 45 minutes = 705 minutes)
     // This should both generate a warning AND be counted as dead time
     assert!(!data.warnings.is_empty());
-    assert!(data
-        .warnings
-        .iter()
-        .any(|w| w.contains("Gap from 4:00 to 3:45")));
+    assert!(
+        data.warnings
+            .iter()
+            .any(|w| w.contains("Gap from 4:00 to 3:45"))
+    );
 
     // The dead time should include the large gap: 705 minutes (11:45)
     assert_eq!(data.dead_time_minutes, 705);

@@ -10,19 +10,14 @@ fn parse_time(time_str: &str) -> Result<Time, String> {
 
     match parts.len() {
         1 => {
-            let hour: u8 = parts[0]
-                .parse()
-                .map_err(|_| format!("Invalid hour: {}", parts[0]))?;
-            Time::new(hour, 0)
+            let hour = parts[0];
+            let minute = "00";
+            Time::from_strings(hour, minute)
         }
         2 => {
-            let hour: u8 = parts[0]
-                .parse()
-                .map_err(|_| format!("Invalid hour: {}", parts[0]))?;
-            let minute: u8 = parts[1]
-                .parse()
-                .map_err(|_| format!("Invalid minute: {}", parts[1]))?;
-            Time::new(hour, minute)
+            let hour = parts[0];
+            let minute = parts[1];
+            Time::from_strings(hour, minute)
         }
         _ => Err(format!("Invalid time format: {time_str}")),
     }

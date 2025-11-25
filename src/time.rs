@@ -15,6 +15,11 @@ pub struct Time {
 }
 
 impl Time {
+    pub fn from_strings(hour: &str, minute: &str) -> Result<Self, String> {
+        let hour: Hour = hour.parse()?;
+        let minute: Minute = minute.parse()?;
+        Ok(Time { hour, minute })
+    }
     pub fn new(hour: u8, minute: u8) -> Result<Self, String> {
         if !(1..=12).contains(&hour) {
             return Err(format!("Hour must be between 1 and 12, got {hour}"));

@@ -3,13 +3,15 @@ use std::{fmt::Display, str::FromStr};
 use super::*;
 
 mod hour;
+mod minute;
 pub use hour::Hour;
+pub use minute::Minute;
 
 /// Represents a time in 12-hour format (no AM/PM needed as per requirements)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Time {
     pub hour: Hour,
-    pub minute: u8,
+    pub minute: Minute,
 }
 
 impl Time {
@@ -21,13 +23,14 @@ impl Time {
             return Err(format!("Minute must be between 0 and 59, got {minute}"));
         }
         let hour: Hour = hour.try_into()?;
+        let minute: Minute = minute.try_into()?;
         Ok(Time { hour, minute })
     }
 
     /// Convert time to minutes since midnight (assuming 12-hour format)
     pub fn to_minutes(&self) -> u16 {
         let hour_24 = if self.hour == 12 { 0 } else { self.hour.get() };
-        (hour_24 as u16 * 60) + self.minute as u16
+        (hour_24 as u16 * 60) + self.minute.get() as u16
     }
 
     /// Calculate duration in minutes between two times

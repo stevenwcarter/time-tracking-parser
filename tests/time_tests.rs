@@ -81,3 +81,12 @@ fn test_hour() {
     assert!("13".parse::<Hour>().is_err());
     assert!("-3".parse::<Hour>().is_err());
 }
+
+#[test]
+fn test_minute() {
+    assert_eq!("1".parse::<Minute>().unwrap(), 1);
+    assert_eq!("0".parse::<Minute>().unwrap(), 0);
+    assert_eq!("12".parse::<Minute>().unwrap(), 12);
+    assert!("63".parse::<Minute>().is_err());
+    assert!("-3".parse::<Minute>().is_err());
+}

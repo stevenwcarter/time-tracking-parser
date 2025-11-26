@@ -154,7 +154,7 @@ pub fn parse_time_tracking_data(
     // Calculate dead time using all entries (reuse the gap calculation)
     entries.windows(2).for_each(|chunk| {
         if let [first, second] = chunk {
-            let gap = first.end.chronological_duration_minutes(&second.start);
+            let gap = first.end.gap(&second.start);
             if gap > 0 {
                 data.dead_time_minutes += gap;
             }

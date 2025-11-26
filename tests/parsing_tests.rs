@@ -124,7 +124,7 @@ fn test_parse_long_duration_warning() {
     use time_tracking_parser::Time;
     let time_3 = Time::new(3, 0).unwrap();
     let time_1 = Time::new(1, 0).unwrap();
-    let gap = time_3.chronological_duration_minutes(&time_1);
+    let gap = time_3.gap(&time_1);
     println!("Gap from 3:00 to 1:00: {gap} minutes");
 
     // This should trigger a warning because going from 3 to 1 suggests a 22-hour gap

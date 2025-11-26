@@ -80,7 +80,7 @@ impl TimeTrackingData {
     fn validate_dead_time(&mut self, entries: &[TimeEntry]) {
         entries.windows(2).for_each(|chunk| {
             if let [first, second] = chunk {
-                let gap = first.end.chronological_duration_minutes(&second.start);
+                let gap = first.end.gap(&second.start);
                 if gap > 6 * 60 {
                     self.warnings.push(format!(
                     "Gap from {} to {} appears to be longer than 6 hours. Input may not be in correct order.",

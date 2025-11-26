@@ -40,8 +40,8 @@ fn is_time_tracking_line(line: &str, prefix: Option<&str>) -> bool {
             .expect("could not compile regex")
     });
 
-    if let Some(pref) = prefix {
-        line.starts_with(pref)
+    if let Some(prefix) = prefix {
+        line.starts_with(prefix)
     } else {
         regex.is_match(line)
     }
@@ -49,8 +49,8 @@ fn is_time_tracking_line(line: &str, prefix: Option<&str>) -> bool {
 
 /// Check if we should continue parsing (line starts with number, dash, or space)
 fn should_continue_parsing(line: &str, suffix: Option<&str>) -> bool {
-    if let Some(suff) = suffix {
-        !line.starts_with(suff)
+    if let Some(suffix) = suffix {
+        !line.starts_with(suffix)
     } else {
         true
     }

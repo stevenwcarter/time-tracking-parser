@@ -55,4 +55,40 @@ impl TimeTrackingData {
     pub fn formatted_dead_decimal(&self) -> String {
         Time::format_duration_decimal(self.dead_time_minutes)
     }
+
+    pub fn validate_entries(&mut self, entries: &[TimeEntry]) {
+        // Check for potential time order issues (duration > 6 hours or large gaps)
+        self.validate_durations(entries);
+
+        // Check for large gaps between consecutive entries that might indicate wrong order
+        self.validate_dead_time(entries);
+    }
+
+    fn validate_durations(&mut self, entries: &[TimeEntry]) {
+        for entry in entries {
+            let duration = entry.duration_minutes();
+            if duration > 8 * 60 {
+                self.warnings.push(format!(
+                "Time period {}-{} appears to be longer than 8 hours. Input may not be in correct order.",
+                format_time(&entry.start),
+                format_time(&entry.end)
+            ));
+            }
+        }
+    }
+
+    fn validate_dead_time(&mut self, entries: &[TimeEntry]) {
+        entries.windows(2).for_each(|chunk| {
+            if let [first, second] = chunk {
+                let gap = first.end.chronological_duration_minutes(&second.start);
+                if gap > 6 * 60 {
+                    self.warnings.push(format!(
+                    "Gap from {} to {} appears to be longer than 6 hours. Input may not be in correct order.",
+                    format_time(&first.end),
+                    format_time(&second.start)
+                ));
+                }
+            }
+        });
+    }
 }

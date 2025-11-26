@@ -1,37 +1,32 @@
 use std::collections::HashMap;
 
+use std::sync::OnceLock;
 use strip_prefix_suffix_sane::StripPrefixSuffixSane;
 
 use super::*;
 
+static TIME_REGEX: OnceLock<regex::Regex> = OnceLock::new();
+
 /// Parse a time string like "7:30" or "7"
 fn parse_time(time_str: &str) -> Result<Time, String> {
-    let parts: Vec<&str> = time_str.split(':').collect();
+    let mut parts = time_str.split(':');
 
-    match parts.len() {
-        1 => {
-            let hour = parts[0];
-            let minute = "00";
-            Time::from_strings(hour, minute)
-        }
-        2 => {
-            let hour = parts[0];
-            let minute = parts[1];
-            Time::from_strings(hour, minute)
-        }
-        _ => Err(format!("Invalid time format: {time_str}")),
-    }
+    let hour = parts
+        .next()
+        .ok_or_else(|| format!("Invalid time format: {time_str}"))?;
+    let minute = parts.next().unwrap_or("00");
+
+    Time::from_strings(hour, minute)
 }
 
 /// Parse a time range like "7:30-8" or "8-8:30"
 fn parse_time_range(range_str: &str) -> Result<(Time, Time), String> {
-    let parts: Vec<&str> = range_str.split('-').collect();
-    if parts.len() != 2 {
-        return Err(format!("Invalid time range format: {range_str}"));
-    }
+    let (start, end) = range_str
+        .split_once('-')
+        .ok_or_else(|| format!("Invalid time range format: {range_str}"))?;
 
-    let start = parse_time(parts[0].trim())?;
-    let end = parse_time(parts[1].trim())?;
+    let start = parse_time(start.trim())?;
+    let end = parse_time(end.trim())?;
 
     Ok((start, end))
 }
@@ -40,30 +35,25 @@ fn parse_time_range(range_str: &str) -> Result<(Time, Time), String> {
 /// This includes lines that have the time pattern but might be missing the project name
 fn is_time_tracking_line(line: &str, prefix: Option<&str>) -> bool {
     // Use regex to match time patterns like "10-2" or "10:30-3:45", with or without project name
-    use std::sync::OnceLock;
-    static TIME_REGEX: OnceLock<regex::Regex> = OnceLock::new();
-
-    let regex = TIME_REGEX
-        .get_or_init(|| regex::Regex::new(r"^\d{1,2}(?::\d{2})?-\d{1,2}(?::\d{2})?").unwrap());
+    let regex = TIME_REGEX.get_or_init(|| {
+        regex::Regex::new(r"^\d{1,2}(?::\d{2})?-\d{1,2}(?::\d{2})?")
+            .expect("could not compile regex")
+    });
 
     if let Some(pref) = prefix {
-        return line.starts_with(pref);
+        line.starts_with(pref)
+    } else {
+        regex.is_match(line)
     }
-
-    regex.is_match(line)
 }
 
 /// Check if we should continue parsing (line starts with number, dash, or space)
 fn should_continue_parsing(line: &str, suffix: Option<&str>) -> bool {
     if let Some(suff) = suffix {
-        return !line.starts_with(suff);
+        !line.starts_with(suff)
+    } else {
+        true
     }
-    line.starts_with(char::is_numeric)
-        || line.starts_with('-')
-        || line.starts_with(' ')
-        || line.starts_with('*')
-        || line.starts_with(char::is_lowercase)
-        || line.starts_with(char::is_uppercase)
 }
 
 /// Main parsing function
@@ -116,23 +106,11 @@ pub fn parse_time_tracking_data(
             }
 
             // Parse new time entry
-            let parts: Vec<&str> = line.splitn(2, ' ').collect();
+            let mut parts: Vec<&str> = line.splitn(2, ' ').collect();
             if parts.len() < 2 {
                 data.warnings
                     .push(format!("Line missing project name: {line}"));
-                // Don't continue here - we want to parse the time range for dead time calculation
-                // but we won't create a valid entry
-                if let Ok((start, end)) = parse_time_range(parts[0]) {
-                    // Create a temporary entry just for dead time calculation
-                    // but don't save it as a real entry
-                    current_entry = Some(TimeEntry {
-                        start,
-                        end,
-                        project: String::new(), // Empty project name indicates invalid entry
-                        notes: Vec::new(),
-                    });
-                }
-                continue;
+                parts.push("missing");
             }
 
             match parse_time_range(parts[0]) {
@@ -159,37 +137,12 @@ pub fn parse_time_tracking_data(
     }
 
     // Check for potential time order issues (duration > 6 hours or large gaps)
-    for entry in &entries {
-        let duration = entry.duration_minutes();
-        if duration > 6 * 60 {
-            data.warnings.push(format!(
-                "Time period {}-{} appears to be longer than 6 hours. Input may not be in correct order.",
-                format_time(&entry.start),
-                format_time(&entry.end)
-            ));
-        }
-    }
-
-    // Check for large gaps between consecutive entries that might indicate wrong order
-    let mut last_end: Option<&Time> = None;
-    for entry in &entries {
-        if let Some(prev_end) = last_end {
-            let gap = prev_end.chronological_duration_minutes(&entry.start);
-            if gap > 6 * 60 {
-                data.warnings.push(format!(
-                    "Gap from {} to {} appears to be longer than 6 hours. Input may not be in correct order.",
-                    format_time(prev_end),
-                    format_time(&entry.start)
-                ));
-            }
-        }
-        last_end = Some(&entry.end);
-    }
+    data.validate_entries(&entries);
 
     // Calculate overall start and end times using all entries
     if !entries.is_empty() {
-        data.start_time = Some(entries.first().unwrap().start.clone());
-        data.end_time = Some(entries.last().unwrap().end.clone());
+        data.start_time = Some(entries.first().unwrap().start);
+        data.end_time = Some(entries.last().unwrap().end);
     }
 
     // Calculate total working time using all entries (including ones without project names)
@@ -199,17 +152,14 @@ pub fn parse_time_tracking_data(
     }
 
     // Calculate dead time using all entries (reuse the gap calculation)
-    let mut last_end: Option<&Time> = None;
-    for entry in &entries {
-        if let Some(prev_end) = last_end {
-            let gap = prev_end.chronological_duration_minutes(&entry.start);
+    entries.windows(2).for_each(|chunk| {
+        if let [first, second] = chunk {
+            let gap = first.end.chronological_duration_minutes(&second.start);
             if gap > 0 {
-                // Count ALL gaps as dead time, regardless of size
-                data.dead_time_minutes += gap as u32;
+                data.dead_time_minutes += gap;
             }
         }
-        last_end = Some(&entry.end);
-    }
+    });
 
     data.total_minutes = total_minutes;
 
@@ -234,11 +184,6 @@ pub fn parse_time_tracking_data(
     data.projects.sort_by(|a, b| a.name.cmp(&b.name));
 
     data
-}
-
-pub fn parse_time_data(input: &str, prefix: Option<&str>, suffix: Option<&str>) -> String {
-    let data = parse_time_tracking_data(input, prefix, suffix);
-    generate_sample_output(&data)
 }
 
 pub fn parse_time_data_to_json(input: &str, prefix: Option<&str>, suffix: Option<&str>) -> String {

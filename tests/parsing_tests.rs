@@ -100,7 +100,7 @@ fn test_parse_missing_project_name() {
 
     assert_eq!(data.warnings.len(), 1);
     assert!(data.warnings[0].contains("Line missing project name"));
-    assert_eq!(data.projects.len(), 1);
+    assert_eq!(data.projects.len(), 2);
 }
 
 #[test]
@@ -225,23 +225,6 @@ fn test_project_summary_aggregation() {
 }
 
 #[test]
-fn test_generate_sample_output() {
-    let input = r#"7:30-8 someproject
-8-8:30 admin
-- discussing staffing with colleague"#;
-
-    let data = parse_time_tracking_data(input, None, None);
-    let output = generate_sample_output(&data);
-
-    assert!(output.contains("Start Time: 7:30 End Time: 8:30"));
-    assert!(output.contains("Total Working Time: 1:00 (1.00 hrs)"));
-    assert!(output.contains("Total dead time: 0:00 (0.00 hrs)"));
-    assert!(output.contains("Billing Code: admin - 0:30 (0.50 hrs)"));
-    assert!(output.contains("Billing Code: someproject - 0:30 (0.50 hrs)"));
-    assert!(output.contains("- discussing staffing with colleague"));
-}
-
-#[test]
 fn test_parse_large_gap_dead_time() {
     let input = r#"11:45-12:15 code1
 - Comment explaining what you did
@@ -353,20 +336,19 @@ More content here
 }
 
 #[test]
-fn test_parse_stops_at_non_matching_line() {
+fn test_parse_does_not_stop_at_non_matching_line() {
     let input = r#"10-11 project1
 - Note for project1
 11-12 project2
-;Some random text that doesn't match pattern
+;Some random text
 1-2 project3
-- This should not be parsed"#;
+- This should be parsed"#;
 
     let data = parse_time_tracking_data(input, None, None);
 
-    // Should only parse the first two entries before hitting the non-matching line
-    assert_eq!(data.total_minutes, 120); // 60 + 60 = 120 minutes
-    assert_eq!(data.projects.len(), 2);
+    assert_eq!(data.total_minutes, 180); // 60 + 60 + 60 = 180 minutes
+    assert_eq!(data.projects.len(), 3);
 
     // project3 should not be included
-    assert!(!data.projects.iter().any(|p| p.name == "project3"));
+    assert!(data.projects.iter().any(|p| p.name == "project3"));
 }

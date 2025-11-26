@@ -8,18 +8,19 @@ pub use hour::Hour;
 pub use minute::Minute;
 
 /// Represents a time in 12-hour format (no AM/PM needed as per requirements)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Time {
     pub hour: Hour,
     pub minute: Minute,
 }
 
 impl Time {
-    pub fn from_strings(hour: &str, minute: &str) -> Result<Self, String> {
-        let hour: Hour = hour.parse()?;
-        let minute: Minute = minute.parse()?;
+    pub fn from_strings<T: AsRef<str>>(hour: T, minute: T) -> Result<Self, String> {
+        let hour: Hour = hour.as_ref().parse()?;
+        let minute: Minute = minute.as_ref().parse()?;
         Ok(Time { hour, minute })
     }
+
     pub fn new(hour: u8, minute: u8) -> Result<Self, String> {
         if !(1..=12).contains(&hour) {
             return Err(format!("Hour must be between 1 and 12, got {hour}"));
@@ -54,9 +55,9 @@ impl Time {
 
     /// Calculate duration in minutes between two times assuming chronological order
     /// If end time appears "earlier" than start time, assume it's in the next 12-hour period
-    pub fn chronological_duration_minutes(&self, end: &Time) -> i32 {
-        let start_mins = self.to_minutes() as i32;
-        let end_mins = end.to_minutes() as i32;
+    pub fn chronological_duration_minutes(&self, end: &Time) -> u32 {
+        let start_mins = self.to_minutes() as u32;
+        let end_mins = end.to_minutes() as u32;
 
         if end_mins > start_mins {
             end_mins - start_mins
@@ -80,6 +81,10 @@ impl Time {
     pub fn format_duration_decimal(minutes: u32) -> String {
         let hours = minutes as f32 / 60.0;
         format!("{hours:.2}")
+    }
+
+    pub fn gap(&self, other: &Time) -> u32 {
+        self.chronological_duration_minutes(other)
     }
 }
 

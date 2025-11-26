@@ -1,30 +1,51 @@
 use super::*;
 
-#[derive(Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[serde(transparent)]
+use nutype::nutype;
+
+#[nutype(
+    derive(
+        Debug,
+        Copy,
+        Clone,
+        Deserialize,
+        Serialize,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        Hash,
+        AsRef,
+        Borrow
+    ),
+    validate(predicate =
+        |value: &u8| {
+            (0..=59).contains(value)
+        }
+    )
+)]
 pub struct Minute(u8);
 
 impl Minute {
     pub fn get(&self) -> u8 {
-        self.0
-    }
-}
-
-impl PartialEq<u8> for Minute {
-    fn eq(&self, other: &u8) -> bool {
-        self.0 == *other
-    }
-}
-
-impl PartialOrd<u8> for Minute {
-    fn partial_cmp(&self, other: &u8) -> Option<std::cmp::Ordering> {
-        self.0.partial_cmp(other)
+        *self.as_ref()
     }
 }
 
 impl Display for Minute {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:02}", self.0)
+        write!(f, "{:02}", self.as_ref())
+    }
+}
+
+impl PartialEq<u8> for Minute {
+    fn eq(&self, other: &u8) -> bool {
+        self.as_ref() == other
+    }
+}
+
+impl PartialOrd<u8> for Minute {
+    fn partial_cmp(&self, other: &u8) -> Option<std::cmp::Ordering> {
+        self.as_ref().partial_cmp(other)
     }
 }
 
@@ -32,10 +53,7 @@ impl TryFrom<u8> for Minute {
     type Error = String;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        if !(0..=60).contains(&value) {
-            return Err(format!("Minute must be between 0 and 60, got {}", value));
-        }
-        Ok(Minute(value))
+        Minute::try_new(value).map_err(|e| e.to_string())
     }
 }
 
@@ -46,9 +64,6 @@ impl FromStr for Minute {
         let hour: u8 = s
             .parse()
             .map_err(|_| format!("Invalid hour format: {}", s))?;
-        if !(0..=60).contains(&hour) {
-            return Err(format!("Minute must be between 0 and 60, got {}", hour));
-        }
-        Ok(Minute(hour))
+        Minute::try_new(hour).map_err(|e| e.to_string())
     }
 }
